@@ -44,21 +44,25 @@ func ListSensors(device Device) (sensors []Sensor, err error) {
 }
 
 // ListAllSensors list all sensors with device
-func ListAllSensors(outChan chan<- SensorPair) {
-	defer close(outChan)
-	devices, err := ListDevices()
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-	for _, device := range devices {
-		sensors, err := ListSensors(device)
+func ListAllSensors() <-chan SensorPair {
+	resultChan := make(chan SensorPair)
+	go func(outChan chan SensorPair) {
+		defer close(outChan)
+		devices, err := ListDevices()
 		if err != nil {
 			log.Fatal(err)
 			return
 		}
-		for _, sensor := range sensors {
-			outChan <- SensorPair{device, sensor}
+		for _, device := range devices {
+			sensors, err := ListSensors(device)
+			if err != nil {
+				log.Fatal(err)
+				return
+			}
+			for _, sensor := range sensors {
+				outChan <- SensorPair{device, sensor}
+			}
 		}
-	}
+	}(resultChan)
+	return resultChan
 }
