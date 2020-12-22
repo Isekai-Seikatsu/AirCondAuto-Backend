@@ -1,31 +1,44 @@
 package chtapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+// Payload cht mqtt payload format
+type Payload struct {
+	SensorID string    `json:"id"`
+	DeviceID string    `json:"deviceId"`
+	Time     time.Time `json:"time"`
+	Value    []string  `json:"value"`
+}
+
 // DataStreams stores channels listened for a topic from mqtt
-type DataStreams map[SensorPair]chan []byte
+type DataStreams map[SensorPair]chan Payload
 
 // SubSensors subscribe specified sensors and return a map of channels that streaming paylods by mqtt.
 func SubSensors(client mqtt.Client, bufsize int, sensorPairs <-chan SensorPair) DataStreams {
-	dataStream := make(DataStreams)
+	dataStreams := make(DataStreams)
 	for pair := range sensorPairs {
 		topic := fmt.Sprintf("/v1/device/%s/sensor/%s/rawdata", pair.Device.ID, pair.Sensor.ID)
 		log.Println(topic)
-		dataStream[pair] = make(chan []byte, bufsize)
+		dataStreams[pair] = make(chan Payload, bufsize)
 
-		func(payloadChan chan []byte) {
+		func(payloadChan chan Payload) {
 			client.Subscribe(topic, 0, func(c mqtt.Client, m mqtt.Message) {
-				payload := m.Payload()
+				var payload Payload
+				if err := json.Unmarshal(m.Payload(), &payload); err != nil {
+					log.Fatal(err)
+				}
 				payloadChan <- payload
 			})
-		}(dataStream[pair])
+		}(dataStreams[pair])
 	}
-	return dataStream
+	return dataStreams
 }
 
 // SubAllSensors subscribe all sensors and return a map of channels that streaming paylods by mqtt.
@@ -38,9 +51,9 @@ func (dataStreams DataStreams) LogAll() {
 	logChan := make(chan string)
 
 	for _, v := range dataStreams {
-		go func(payloadChan chan []byte) {
+		go func(payloadChan chan Payload) {
 			for payload := range payloadChan {
-				logChan <- string(payload)
+				logChan <- fmt.Sprintf("%s", payload)
 			}
 		}(v)
 	}
