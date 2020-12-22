@@ -17,8 +17,8 @@ type Sensor struct {
 
 // SensorPair pair of device and sensor
 type SensorPair struct {
-	Device Device
-	Sensor Sensor
+	Device *Device
+	Sensor *Sensor
 }
 
 // ListSensors list cht iot sensors of device
@@ -53,14 +53,14 @@ func ListAllSensors() <-chan SensorPair {
 			log.Fatal(err)
 			return
 		}
-		for _, device := range devices {
+		for i, device := range devices {
 			sensors, err := ListSensors(device)
 			if err != nil {
 				log.Fatal(err)
 				return
 			}
-			for _, sensor := range sensors {
-				outChan <- SensorPair{device, sensor}
+			for j := range sensors {
+				outChan <- SensorPair{&devices[i], &sensors[j]}
 			}
 		}
 	}(resultChan)
