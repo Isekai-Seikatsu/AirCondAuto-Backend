@@ -10,22 +10,27 @@ import (
 // DataStreams stores channels listened for a topic from mqtt
 type DataStreams map[SensorPair]chan []byte
 
-// SubAllSensors subscribe all sensors and return a map of channels that streaming paylods by mqtt.
-func SubAllSensors(client mqtt.Client, bufsize int) DataStreams {
+// SubSensors subscribe specified sensors and return a map of channels that streaming paylods by mqtt.
+func SubSensors(client mqtt.Client, bufsize int, sensorPairs <-chan SensorPair) DataStreams {
 	dataStream := make(DataStreams)
-	for v := range ListAllSensors() {
-		topic := fmt.Sprintf("/v1/device/%s/sensor/%s/rawdata", v.Device.ID, v.Sensor.ID)
+	for pair := range sensorPairs {
+		topic := fmt.Sprintf("/v1/device/%s/sensor/%s/rawdata", pair.Device.ID, pair.Sensor.ID)
 		log.Println(topic)
-		dataStream[v] = make(chan []byte, bufsize)
+		dataStream[pair] = make(chan []byte, bufsize)
 
 		func(payloadChan chan []byte) {
 			client.Subscribe(topic, 0, func(c mqtt.Client, m mqtt.Message) {
 				payload := m.Payload()
 				payloadChan <- payload
 			})
-		}(dataStream[v])
+		}(dataStream[pair])
 	}
 	return dataStream
+}
+
+// SubAllSensors subscribe all sensors and return a map of channels that streaming paylods by mqtt.
+func SubAllSensors(client mqtt.Client, bufsize int) DataStreams {
+	return SubSensors(client, bufsize, ListAllSensors())
 }
 
 // LogAll logs all data from streams
