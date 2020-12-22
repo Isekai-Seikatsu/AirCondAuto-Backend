@@ -8,8 +8,15 @@ import (
 
 // Device cht iot device
 type Device struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID         string      `json:"id"`
+	Name       string      `json:"name"`
+	Attributes []Attribute `json:"attributes"`
+}
+
+// Attribute additional key value pair
+type Attribute struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 // ListDevices list cht iot devices
