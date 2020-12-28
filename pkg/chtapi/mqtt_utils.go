@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -13,6 +14,12 @@ import (
 type Payload struct {
 	SensorID string    `json:"id"`
 	DeviceID string    `json:"deviceId"`
+	Time     time.Time `json:"time"`
+	Value    []string  `json:"value"`
+}
+
+type pubTestPayload struct {
+	SensorID string    `json:"id"`
 	Time     time.Time `json:"time"`
 	Value    []string  `json:"value"`
 }
@@ -60,5 +67,27 @@ func (dataStreams DataStreams) LogAll() {
 
 	for logMsg := range logChan {
 		log.Println(logMsg)
+	}
+}
+
+// PubAllFakeData publish fake datas to do testing
+func PubAllFakeData(client mqtt.Client) {
+	payloads := make([]pubTestPayload, 1)
+	for t := range time.Tick(5 * time.Second) {
+		for pair := range ListAllSensors() {
+			topic := fmt.Sprintf("/v1/device/%s/rawdata", pair.Device.ID)
+			payloads[0] = pubTestPayload{
+				SensorID: pair.Sensor.ID,
+				Time:     t,
+				Value:    []string{fmt.Sprintf("%v", rand.Intn(100))},
+			}
+
+			buf, err := json.Marshal(payloads)
+			if err != nil {
+				panic(err)
+			}
+			log.Println(string(buf))
+			client.Publish(topic, 0, false, buf)
+		}
 	}
 }

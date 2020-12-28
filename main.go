@@ -43,6 +43,10 @@ func main() {
 	dataStreams := chtapi.SubAllSensors(client, 100)
 	db.SaveToInflux(dataStreams, writeAPI)
 
+	if os.Getenv("PRODUCE_FAKE_DATA") == "true" {
+		go chtapi.PubAllFakeData(client)
+	}
+
 	queryAPI := influxClient.QueryAPI("iot-sensor")
 
 	// API start
