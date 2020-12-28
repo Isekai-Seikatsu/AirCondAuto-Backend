@@ -53,37 +53,40 @@ func main() {
 	route := gin.New()
 	route.Use(gin.Logger())
 
-	route.Use(gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
-		var msg string
-		if err, ok := recovered.(string); ok {
-			msg = fmt.Sprintf("error: %s", err)
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": msg})
-	}))
+	api := route.Group("/api")
+	{
+		api.Use(gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
+			var msg string
+			if err, ok := recovered.(string); ok {
+				msg = fmt.Sprintf("error: %s", err)
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": msg})
+		}))
 
-	route.GET("/", func(c *gin.Context) {
-		c.String(http.StatusOK, "Home Page")
-	})
-	route.GET("/room/:roomId/:measurement", func(c *gin.Context) {
-		var rm roomMeasure
-		options := rangeOptions{RelTime: "3d"}
-
-		defer log.Println(&rm, &options)
-		if err := c.ShouldBindUri(&rm); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": fmt.Sprintf("%v", err)})
-			return
-		} else if err := c.ShouldBindQuery(&options); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": fmt.Sprintf("%v", err)})
-			return
-		}
-
-		data := db.LastMeasurement(queryAPI, db.LastMeasurementData{
-			Bucket:      "sensor",
-			RelTime:     options.RelTime,
-			Measurement: rm.Measurement,
-			Filters:     map[string]string{"RoomID": rm.RoomID},
+		api.GET("/", func(c *gin.Context) {
+			c.String(http.StatusOK, "Home Page")
 		})
-		c.JSON(http.StatusOK, gin.H{"ok": true, "data": data})
-	})
+		api.GET("/room/:roomId/:measurement", func(c *gin.Context) {
+			var rm roomMeasure
+			options := rangeOptions{RelTime: "3d"}
+
+			defer log.Println(&rm, &options)
+			if err := c.ShouldBindUri(&rm); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": fmt.Sprintf("%v", err)})
+				return
+			} else if err := c.ShouldBindQuery(&options); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": fmt.Sprintf("%v", err)})
+				return
+			}
+
+			data := db.LastMeasurement(queryAPI, db.LastMeasurementData{
+				Bucket:      "sensor",
+				RelTime:     options.RelTime,
+				Measurement: rm.Measurement,
+				Filters:     map[string]string{"RoomID": rm.RoomID},
+			})
+			c.JSON(http.StatusOK, gin.H{"ok": true, "data": data})
+		})
+	}
 	route.Run(":8088")
 }
