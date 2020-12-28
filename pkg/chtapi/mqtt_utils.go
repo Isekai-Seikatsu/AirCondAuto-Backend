@@ -50,6 +50,7 @@ func SubSensors(client mqtt.Client, bufsize int, sensorPairs <-chan SensorPair) 
 
 // SubAllSensors subscribe all sensors and return a map of channels that streaming paylods by mqtt.
 func SubAllSensors(client mqtt.Client, bufsize int) DataStreams {
+	// TODO update sub sensors list from chtapi 工學大樓to period reload subcribing
 	return SubSensors(client, bufsize, ListAllSensors())
 }
 
