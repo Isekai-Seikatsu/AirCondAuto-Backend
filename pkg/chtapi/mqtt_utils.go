@@ -50,8 +50,8 @@ func SubSensors(client mqtt.Client, bufsize int, sensorPairs <-chan SensorPair) 
 
 // SubAllSensors subscribe all sensors and return a map of channels that streaming paylods by mqtt.
 func SubAllSensors(client mqtt.Client, bufsize int) DataStreams {
-	// TODO update sub sensors list from chtapi 工學大樓to period reload subcribing
-	return SubSensors(client, bufsize, ListAllSensors())
+	// TODO update sub sensors list from chtapi to period reload subcribing
+	return SubSensors(client, bufsize, ListAllSensors(32))
 }
 
 // LogAll logs all data from streams
@@ -75,7 +75,7 @@ func (dataStreams DataStreams) LogAll() {
 func PubAllFakeData(client mqtt.Client) {
 	payloads := make([]pubTestPayload, 1)
 	for t := range time.Tick(5 * time.Second) {
-		for pair := range ListAllSensors() {
+		for pair := range ListAllSensors(32) {
 			topic := fmt.Sprintf("/v1/device/%s/rawdata", pair.Device.ID)
 			payloads[0] = pubTestPayload{
 				SensorID: pair.Sensor.ID,
