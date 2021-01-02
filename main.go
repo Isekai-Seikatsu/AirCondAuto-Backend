@@ -116,7 +116,7 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"ok": true, "data": data})
 		})
 
-		api.GET("/room/:roomId/:measurement", func(c *gin.Context) {
+		api.GET("/room/:roomId/:measurement/last", func(c *gin.Context) {
 			var rm roomMeasure
 			options := rangeOptions{RelTime: "3d"}
 
