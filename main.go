@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -103,6 +104,7 @@ func main() {
 							roomData = make(gin.H)
 							buildingData["rooms"] = append(buildingData["rooms"].([]gin.H), roomData)
 							roomData["RoomID"] = v["RoomID"]
+							roomData["RoomNumber"] = strings.TrimPrefix(v["RoomID"].(string), v["buildingID"].(string))
 							roomData["Abnormal"] = make([]string, 0)
 						}
 						for _, attr := range pair.Sensor.Attributes {
