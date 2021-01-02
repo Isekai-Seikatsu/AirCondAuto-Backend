@@ -72,6 +72,49 @@ func main() {
 		api.GET("/", func(c *gin.Context) {
 			c.String(http.StatusOK, "Home Page")
 		})
+		api.GET("/building", func(c *gin.Context) {
+			data := db.ListBuildings(queryAPI, "3d")
+			var buildingData, roomData gin.H
+			buildingList := make([]gin.H, 0)
+			buildingID := ""
+			roomID := int64(-1)
+			for _, v := range data {
+				if buildingID != v["buildingID"] {
+					buildingID = v["buildingID"].(string)
+					buildingData = make(gin.H)
+					buildingList = append(buildingList, buildingData)
+					buildingData["buildingName"] = v["buildingName"]
+					buildingData["buildingID"] = v["buildingID"]
+					buildingData["rooms"] = make([]gin.H, 0)
+				}
+				if roomID != v["table"] {
+					roomID = v["table"].(int64)
+					roomData = make(gin.H)
+					buildingData["rooms"] = append(buildingData["rooms"].([]gin.H), roomData)
+					roomData["RoomID"] = v["RoomID"]
+					roomData["isAbnorml"] = make(gin.H)
+				}
+				pair := sensorData[v["deviceId"].(string)+v["_field"].(string)]
+				for _, attr := range pair.Sensor.Attributes {
+					if attr.Key == "threshold" {
+						if f, err := strconv.ParseFloat(attr.Value, 64); err == nil {
+							roomData["isAbnorml"].(gin.H)[pair.Sensor.ID] = v["_value"].(float64) > f
+						}
+						break
+					}
+				}
+
+			}
+			c.JSON(http.StatusOK, gin.H{"ok": true, "data": buildingList})
+		})
+		api.GET("/sensor", func(c *gin.Context) {
+			var data []chtapi.SensorPair
+			for pair := range chtapi.ListAllSensors(32) {
+				data = append(data, pair)
+			}
+			c.JSON(http.StatusOK, gin.H{"ok": true, "data": data})
+		})
+
 		api.GET("/room/:roomId/:measurement", func(c *gin.Context) {
 			var rm roomMeasure
 			options := rangeOptions{RelTime: "3d"}

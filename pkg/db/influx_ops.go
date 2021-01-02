@@ -22,9 +22,17 @@ type LastMeasurementData struct {
 }
 
 var lastMeasureTemp *template.Template
+var listBuildingTemp *template.Template
 
 func init() {
 	lastMeasureTemp = template.Must(template.New("lastMeasure").Parse(`from(bucket: {{.Bucket|printf "%q"}}) |> range(start: -{{.RelTime}}) |> filter(fn: (r) => r._measurement=={{.Measurement | printf "%q"}} {{range $k, $v := .Filters }}and r.{{$k}}=={{$v | printf "%q"}} {{end}}) |> last()`))
+	listBuildingTemp = template.Must(template.New("listBuilding").Parse(
+		`from(bucket: "sensor")
+|> range(start: -{{.}})
+|> filter(fn: (r) => exists r.buildingID)
+|> group(columns: ["buildingID", "RoomID", "_field"])
+|> last()
+|> group(columns: ["buildingID", "RoomID"])`))
 }
 
 // SaveToInflux saves to influxdb
@@ -82,4 +90,30 @@ func LastMeasurement(queryAPI api.QueryAPI, queryData LastMeasurementData) []map
 	}
 	return data
 
+}
+
+// ListBuildings list all datas with building tag
+func ListBuildings(queryAPI api.QueryAPI, relTime string) []map[string]interface{} {
+	var queryBuidler strings.Builder
+
+	listBuildingTemp.Execute(&queryBuidler, relTime)
+	query := queryBuidler.String()
+
+	result, err := queryAPI.Query(context.Background(), query)
+	data := make([]map[string]interface{}, 0)
+	// tables := make([]map[string]interface{}, 0)
+	// tableIndex := -1
+	if err == nil {
+		for result.Next() {
+			values := result.Record().Values()
+			data = append(data, values)
+		}
+		// check for an error
+		if result.Err() != nil {
+			fmt.Printf("query parsing error: %s\n", result.Err().Error())
+		}
+	} else {
+		panic(err)
+	}
+	return data
 }
