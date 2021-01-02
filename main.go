@@ -94,13 +94,13 @@ func main() {
 					roomData = make(gin.H)
 					buildingData["rooms"] = append(buildingData["rooms"].([]gin.H), roomData)
 					roomData["RoomID"] = v["RoomID"]
-					roomData["isAbnorml"] = make(gin.H)
+					roomData["isAbnormal"] = make(gin.H)
 				}
 				if pair, ok := sensorData[v["deviceId"].(string)+v["_field"].(string)]; ok {
 					for _, attr := range pair.Sensor.Attributes {
 						if attr.Key == "threshold" {
 							if f, err := strconv.ParseFloat(attr.Value, 64); err == nil {
-								roomData["isAbnorml"].(gin.H)[pair.Sensor.ID] = v["_value"].(float64) > f
+								roomData["isAbnormal"].(gin.H)[pair.Sensor.ID] = v["_value"].(float64) > f
 							}
 							break
 						}
