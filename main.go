@@ -62,6 +62,8 @@ func main() {
 	route := gin.New()
 	route.Use(gin.Logger())
 
+	route.Static("/", "./dist")
+
 	api := route.Group("/api")
 	{
 		api.Use(CORSAllowAll())
