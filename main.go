@@ -5,6 +5,7 @@ import (
 	"iot-backend/pkg/chtapi"
 	"iot-backend/pkg/db"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -258,6 +259,12 @@ func main() {
 				}
 			}
 			c.JSON(http.StatusOK, gin.H{"ok": true, "data": resultData})
+		})
+		api.GET("/room/:roomId/controldevice", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"ok": true, "data": []gin.H{
+				gin.H{"deviceName": "AirCond1", "open": rand.Intn(2) == 1},
+				gin.H{"deviceName": "AirCond2", "open": rand.Intn(2) == 1},
+			}})
 		})
 	}
 	route.Run(":8088")
