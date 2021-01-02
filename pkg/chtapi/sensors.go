@@ -10,9 +10,10 @@ import (
 
 // Sensor cht iot sensor
 type Sensor struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Unit string `json:"unit"`
+	ID         string      `json:"id"`
+	Name       string      `json:"name"`
+	Unit       string      `json:"unit"`
+	Attributes []Attribute `json:"attributes"`
 }
 
 // SensorPair pair of device and sensor
