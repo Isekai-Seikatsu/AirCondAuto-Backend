@@ -252,8 +252,8 @@ func main() {
 					}
 					if v["_value"].(float64) > thresholdValue {
 						resultData = append(resultData, gin.H{
-							"type": "alert",
-							"msg":  alertMsg,
+							"alert": true,
+							"msg":   alertMsg,
 						})
 					}
 				}
