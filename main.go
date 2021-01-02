@@ -275,6 +275,8 @@ func main() {
 	route.StaticFile("/favicon.ico", "./dist/favicon.ico")
 	route.StaticFile("/index.html", "./dist/index.html")
 	route.StaticFile("/", "./dist/index.html")
-
+	route.NoRoute(func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/index.html")
+	})
 	route.Run(":8088")
 }
