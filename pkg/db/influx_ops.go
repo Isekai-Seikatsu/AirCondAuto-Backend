@@ -42,7 +42,7 @@ func init() {
 |> filter(fn: (r) => exists r.buildingID)
 |> group(columns: ["buildingID", "RoomID", "_field"])
 |> last()
-|> group(columns: ["buildingID", "RoomID"])`))
+|> group(columns: ["buildingID"])`))
 	rangeMeasureTemp = template.Must(template.New("rangeMeasure").Parse(
 		`from(bucket: "sensor")
 |> range(start: -{{.RelTime}})

@@ -80,7 +80,7 @@ func main() {
 			var buildingData, roomData gin.H
 			buildingList := make([]gin.H, 0)
 			buildingID := ""
-			roomID := int64(-1)
+			roomID := ""
 			for _, v := range data {
 				if buildingID != v["buildingID"] {
 					buildingID = v["buildingID"].(string)
@@ -90,20 +90,30 @@ func main() {
 					buildingData["buildingID"] = v["buildingID"]
 					buildingData["rooms"] = make([]gin.H, 0)
 				}
-				if roomID != v["table"] {
-					roomID = v["table"].(int64)
-					roomData = make(gin.H)
-					buildingData["rooms"] = append(buildingData["rooms"].([]gin.H), roomData)
-					roomData["RoomID"] = v["RoomID"]
-					roomData["isAbnormal"] = make(gin.H)
-				}
 				if pair, ok := sensorData[v["deviceId"].(string)+v["_field"].(string)]; ok {
-					for _, attr := range pair.Sensor.Attributes {
-						if attr.Key == "threshold" {
-							if f, err := strconv.ParseFloat(attr.Value, 64); err == nil {
-								roomData["isAbnormal"].(gin.H)[pair.Sensor.ID] = v["_value"].(float64) > f
+					var deviceRoomID string
+					for _, attr := range pair.Device.Attributes {
+						if attr.Key == "RoomID" {
+							deviceRoomID = attr.Value
+						}
+					}
+					if v["RoomID"] == deviceRoomID {
+						if roomID != v["RoomID"] {
+							roomID = v["RoomID"].(string)
+							roomData = make(gin.H)
+							buildingData["rooms"] = append(buildingData["rooms"].([]gin.H), roomData)
+							roomData["RoomID"] = v["RoomID"]
+							roomData["Abnormal"] = make([]string, 0)
+						}
+						for _, attr := range pair.Sensor.Attributes {
+							if attr.Key == "threshold" {
+								if f, err := strconv.ParseFloat(attr.Value, 64); err == nil {
+									if v["_value"].(float64) > f {
+										roomData["Abnormal"] = append(roomData["Abnormal"].([]string), pair.Sensor.ID)
+									}
+								}
+								break
 							}
-							break
 						}
 					}
 				}
