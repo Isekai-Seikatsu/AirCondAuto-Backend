@@ -237,10 +237,9 @@ func main() {
 			})
 			resultData := make([]gin.H, 0)
 			var thresholdValue float64
-			var alertMsg string
 			for _, v := range data {
+				alertMsg := ""
 				if pair, ok := sensorData[v["deviceId"].(string)+v["_field"].(string)]; ok {
-					v["unit"] = pair.Sensor.Unit
 					for _, attr := range pair.Sensor.Attributes {
 						if attr.Key == "threshold" {
 							if f, err := strconv.ParseFloat(attr.Value, 64); err == nil {
