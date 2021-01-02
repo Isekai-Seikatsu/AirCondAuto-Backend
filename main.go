@@ -96,13 +96,14 @@ func main() {
 					roomData["RoomID"] = v["RoomID"]
 					roomData["isAbnorml"] = make(gin.H)
 				}
-				pair := sensorData[v["deviceId"].(string)+v["_field"].(string)]
-				for _, attr := range pair.Sensor.Attributes {
-					if attr.Key == "threshold" {
-						if f, err := strconv.ParseFloat(attr.Value, 64); err == nil {
-							roomData["isAbnorml"].(gin.H)[pair.Sensor.ID] = v["_value"].(float64) > f
+				if pair, ok := sensorData[v["deviceId"].(string)+v["_field"].(string)]; ok {
+					for _, attr := range pair.Sensor.Attributes {
+						if attr.Key == "threshold" {
+							if f, err := strconv.ParseFloat(attr.Value, 64); err == nil {
+								roomData["isAbnorml"].(gin.H)[pair.Sensor.ID] = v["_value"].(float64) > f
+							}
+							break
 						}
-						break
 					}
 				}
 
@@ -136,19 +137,22 @@ func main() {
 				Measurement: rm.Measurement,
 				Filters:     map[string]string{"RoomID": rm.RoomID},
 			})
+			resultData := make([]gin.H, 0)
 			for _, v := range data {
-				pair := sensorData[v["deviceId"].(string)+v["_field"].(string)]
-				v["unit"] = pair.Sensor.Unit
-				for _, attr := range pair.Sensor.Attributes {
-					if attr.Key == "threshold" {
-						if f, err := strconv.ParseFloat(attr.Value, 64); err == nil {
-							v["abnormal"] = v["_value"].(float64) > f
+				if pair, ok := sensorData[v["deviceId"].(string)+v["_field"].(string)]; ok {
+					v["unit"] = pair.Sensor.Unit
+					for _, attr := range pair.Sensor.Attributes {
+						if attr.Key == "threshold" {
+							if f, err := strconv.ParseFloat(attr.Value, 64); err == nil {
+								v["abnormal"] = v["_value"].(float64) > f
+							}
+							break
 						}
-						break
 					}
+					resultData = append(resultData, v)
 				}
 			}
-			c.JSON(http.StatusOK, gin.H{"ok": true, "data": data})
+			c.JSON(http.StatusOK, gin.H{"ok": true, "data": resultData})
 		})
 	}
 	route.Run(":8088")
