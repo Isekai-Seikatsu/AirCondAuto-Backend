@@ -44,8 +44,8 @@ func ListSensors(device Device) (sensors []Sensor, err error) {
 }
 
 // ListAllSensors list all sensors with device
-func ListAllSensors() <-chan SensorPair {
-	resultChan := make(chan SensorPair)
+func ListAllSensors(bufsize int) <-chan SensorPair {
+	resultChan := make(chan SensorPair, bufsize)
 	go func(outChan chan SensorPair) {
 		defer close(outChan)
 		devices, err := ListDevices()
