@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
@@ -134,6 +135,18 @@ func main() {
 				Measurement: rm.Measurement,
 				Filters:     map[string]string{"RoomID": rm.RoomID},
 			})
+			for _, v := range data {
+				pair := sensorData[v["deviceId"].(string)+v["_field"].(string)]
+				v["unit"] = pair.Sensor.Unit
+				for _, attr := range pair.Sensor.Attributes {
+					if attr.Key == "threshold" {
+						if f, err := strconv.ParseFloat(attr.Value, 64); err == nil {
+							v["abnormal"] = v["_value"].(float64) > f
+						}
+						break
+					}
+				}
+			}
 			c.JSON(http.StatusOK, gin.H{"ok": true, "data": data})
 		})
 	}
