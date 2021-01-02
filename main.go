@@ -62,6 +62,7 @@ func main() {
 
 	api := route.Group("/api")
 	{
+		api.Use(CORSAllowAll())
 		api.Use(gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
 			var msg string
 			if err, ok := recovered.(string); ok {
