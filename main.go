@@ -117,6 +117,55 @@ func main() {
 			}
 			c.JSON(http.StatusOK, gin.H{"ok": true, "data": data})
 		})
+		api.GET("/room/:roomId/:measurement/range", func(c *gin.Context) {
+			var rm roomMeasure
+			if err := c.ShouldBindUri(&rm); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": fmt.Sprintf("%v", err)})
+				return
+			}
+
+			data := db.WindowAggregativeMeasurement(queryAPI, db.RangeMeasurementData{
+				RoomID:  rm.RoomID,
+				RelTime: "1d",
+				Every:   "30m",
+				AggFunc: "mean",
+				LimitN:  5,
+			})
+			var (
+				rangeData         gin.H
+				abnormalThreshold float64
+			)
+			resultData := make([]gin.H, 0)
+			tableIndex := int64(-1)
+			for _, v := range data {
+
+				if pair, ok := sensorData[v["deviceId"].(string)+v["_field"].(string)]; ok {
+					if v["table"] != tableIndex {
+						tableIndex = v["table"].(int64)
+						rangeData = make(gin.H)
+						resultData = append(resultData, rangeData)
+						rangeData["name"] = pair.Sensor.ID
+						rangeData["unit"] = pair.Sensor.Unit
+						rangeData["time"] = make([]time.Time, 0)
+						rangeData["value"] = make([]float64, 0)
+						rangeData["abnormal"] = make([]bool, 0)
+						for _, attr := range pair.Sensor.Attributes {
+							if attr.Key == "threshold" {
+								if f, err := strconv.ParseFloat(attr.Value, 64); err == nil {
+									abnormalThreshold = f
+								}
+								break
+							}
+						}
+					}
+					rangeData["time"] = append(rangeData["time"].([]time.Time), v["_time"].(time.Time))
+					rangeData["value"] = append(rangeData["value"].([]float64), v["_value"].(float64))
+					rangeData["abnormal"] = append(rangeData["abnormal"].([]bool), v["_value"].(float64) > abnormalThreshold)
+				}
+			}
+
+			c.JSON(http.StatusOK, gin.H{"ok": true, "data": resultData})
+		})
 
 		api.GET("/room/:roomId/:measurement/last", func(c *gin.Context) {
 			var rm roomMeasure

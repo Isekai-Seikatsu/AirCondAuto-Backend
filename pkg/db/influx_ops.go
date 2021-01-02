@@ -21,8 +21,18 @@ type LastMeasurementData struct {
 	Filters     map[string]string
 }
 
+// RangeMeasurementData data to query RangeMeasurement
+type RangeMeasurementData struct {
+	RoomID  string
+	RelTime string
+	Every   string
+	AggFunc string
+	LimitN  int
+}
+
 var lastMeasureTemp *template.Template
 var listBuildingTemp *template.Template
+var rangeMeasureTemp *template.Template
 
 func init() {
 	lastMeasureTemp = template.Must(template.New("lastMeasure").Parse(`from(bucket: {{.Bucket|printf "%q"}}) |> range(start: -{{.RelTime}}) |> filter(fn: (r) => r._measurement=={{.Measurement | printf "%q"}} {{range $k, $v := .Filters }}and r.{{$k}}=={{$v | printf "%q"}} {{end}}) |> last()`))
@@ -33,6 +43,13 @@ func init() {
 |> group(columns: ["buildingID", "RoomID", "_field"])
 |> last()
 |> group(columns: ["buildingID", "RoomID"])`))
+	rangeMeasureTemp = template.Must(template.New("rangeMeasure").Parse(
+		`from(bucket: "sensor")
+|> range(start: -{{.RelTime}})
+|> filter(fn: (r) => r["_measurement"] == "AirQuality" and r["RoomID"] == {{.RoomID | printf "%q"}})
+|> aggregateWindow(every: {{.Every}}, fn: {{.AggFunc}}, createEmpty: false)
+|> limit(n: {{.LimitN}})`))
+
 }
 
 // SaveToInflux saves to influxdb
@@ -60,25 +77,13 @@ func SaveToInflux(dataStreams chtapi.DataStreams, writeAPI api.WriteAPI) {
 	}
 }
 
-// LastMeasurement query the last measurment with tags
-func LastMeasurement(queryAPI api.QueryAPI, queryData LastMeasurementData) []map[string]interface{} {
-	data := make([]map[string]interface{}, 0)
-	var queryBuidler strings.Builder
-
-	lastMeasureTemp.Execute(&queryBuidler, queryData)
-	query := queryBuidler.String()
-	log.Println(query)
+// ExecuteQuery execute query and return flatten result
+func ExecuteQuery(queryAPI api.QueryAPI, query string) []map[string]interface{} {
 	result, err := queryAPI.Query(context.Background(), query)
+	data := make([]map[string]interface{}, 0)
 	if err == nil {
-		// Iterate over query response
 		for result.Next() {
-			// Notice when group key has changed
-			if result.TableChanged() {
-				fmt.Printf("table: %s\n", result.TableMetadata().String())
-			}
-			// Access data
 			values := result.Record().Values()
-			fmt.Printf("value: %s\n", values)
 			data = append(data, values)
 		}
 		// check for an error
@@ -89,7 +94,16 @@ func LastMeasurement(queryAPI api.QueryAPI, queryData LastMeasurementData) []map
 		panic(err)
 	}
 	return data
+}
 
+// LastMeasurement query the last measurment with tags
+func LastMeasurement(queryAPI api.QueryAPI, queryData LastMeasurementData) []map[string]interface{} {
+	var queryBuidler strings.Builder
+
+	lastMeasureTemp.Execute(&queryBuidler, queryData)
+	query := queryBuidler.String()
+	log.Println(query)
+	return ExecuteQuery(queryAPI, query)
 }
 
 // ListBuildings list all datas with building tag
@@ -98,22 +112,16 @@ func ListBuildings(queryAPI api.QueryAPI, relTime string) []map[string]interface
 
 	listBuildingTemp.Execute(&queryBuidler, relTime)
 	query := queryBuidler.String()
+	log.Println(query)
+	return ExecuteQuery(queryAPI, query)
+}
 
-	result, err := queryAPI.Query(context.Background(), query)
-	data := make([]map[string]interface{}, 0)
-	// tables := make([]map[string]interface{}, 0)
-	// tableIndex := -1
-	if err == nil {
-		for result.Next() {
-			values := result.Record().Values()
-			data = append(data, values)
-		}
-		// check for an error
-		if result.Err() != nil {
-			fmt.Printf("query parsing error: %s\n", result.Err().Error())
-		}
-	} else {
-		panic(err)
-	}
-	return data
+// WindowAggregativeMeasurement query the measurement that window aggregated
+func WindowAggregativeMeasurement(queryAPI api.QueryAPI, queryData RangeMeasurementData) []map[string]interface{} {
+	var queryBuidler strings.Builder
+
+	rangeMeasureTemp.Execute(&queryBuidler, queryData)
+	query := queryBuidler.String()
+	log.Println(query)
+	return ExecuteQuery(queryAPI, query)
 }
