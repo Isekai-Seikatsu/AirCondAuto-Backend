@@ -62,8 +62,6 @@ func main() {
 	route := gin.New()
 	route.Use(gin.Logger())
 
-	route.Static("/", "./dist")
-
 	api := route.Group("/api")
 	{
 		api.Use(CORSAllowAll())
@@ -269,5 +267,14 @@ func main() {
 			}})
 		})
 	}
+
+	route.StaticFS("/fonts", http.Dir("./dist/fonts"))
+	route.StaticFS("/img", http.Dir("./dist/img"))
+	route.StaticFS("/js", http.Dir("./dist/js"))
+	route.StaticFS("/css", http.Dir("./dist/css"))
+	route.StaticFile("/favicon.ico", "./dist/favicon.ico")
+	route.StaticFile("/index.html", "./dist/index.html")
+	route.StaticFile("/", "./dist/index.html")
+
 	route.Run(":8088")
 }
