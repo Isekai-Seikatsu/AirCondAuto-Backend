@@ -24,6 +24,12 @@ type rangeOptions struct {
 }
 
 func main() {
+	sensorData := make(map[string]chtapi.SensorPair)
+	for pair := range chtapi.ListAllSensors(32) {
+		sensorData[pair.Device.ID+pair.Sensor.ID] = pair
+	}
+	log.Println(sensorData)
+
 	influxClient := influxdb2.NewClientWithOptions("http://localhost:8086", os.Getenv("INFLUX_TOKEN"),
 		influxdb2.DefaultOptions().SetLogLevel(3))
 	writeAPI := influxClient.WriteAPI("iot-sensor", "sensor")
