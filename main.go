@@ -18,8 +18,7 @@ import (
 )
 
 type roomMeasure struct {
-	RoomID      string `uri:"roomId" binding:"alphanum,required"`
-	Measurement string `uri:"measurement" binding:"alphanum,required"`
+	RoomID string `uri:"roomId" binding:"alphanum,required"`
 }
 type rangeOptions struct {
 	// TODO add time validator
@@ -130,7 +129,7 @@ func main() {
 			}
 			c.JSON(http.StatusOK, gin.H{"ok": true, "data": data})
 		})
-		api.GET("/room/:roomId/:measurement/range", func(c *gin.Context) {
+		api.GET("/room/:roomId/AirQuality/range", func(c *gin.Context) {
 			var rm roomMeasure
 			if err := c.ShouldBindUri(&rm); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": fmt.Sprintf("%v", err)})
@@ -180,7 +179,7 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"ok": true, "data": resultData})
 		})
 
-		api.GET("/room/:roomId/:measurement/last", func(c *gin.Context) {
+		api.GET("/room/:roomId/AirQuality/last", func(c *gin.Context) {
 			var rm roomMeasure
 			options := rangeOptions{RelTime: "3d"}
 
@@ -196,7 +195,7 @@ func main() {
 			data := db.LastMeasurement(queryAPI, db.LastMeasurementData{
 				Bucket:      "sensor",
 				RelTime:     options.RelTime,
-				Measurement: rm.Measurement,
+				Measurement: "AirQuality",
 				Filters:     map[string]string{"RoomID": rm.RoomID},
 			})
 			resultData := make([]gin.H, 0)
@@ -212,6 +211,51 @@ func main() {
 						}
 					}
 					resultData = append(resultData, v)
+				}
+			}
+			c.JSON(http.StatusOK, gin.H{"ok": true, "data": resultData})
+		})
+
+		api.GET("/room/:roomId/alert", func(c *gin.Context) {
+			var rm roomMeasure
+			options := rangeOptions{RelTime: "3d"}
+
+			defer log.Println(&rm, &options)
+			if err := c.ShouldBindUri(&rm); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": fmt.Sprintf("%v", err)})
+				return
+			} else if err := c.ShouldBindQuery(&options); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": fmt.Sprintf("%v", err)})
+				return
+			}
+
+			data := db.LastMeasurement(queryAPI, db.LastMeasurementData{
+				Bucket:      "sensor",
+				RelTime:     options.RelTime,
+				Measurement: "AirQuality",
+				Filters:     map[string]string{"RoomID": rm.RoomID},
+			})
+			resultData := make([]gin.H, 0)
+			var thresholdValue float64
+			var alertMsg string
+			for _, v := range data {
+				if pair, ok := sensorData[v["deviceId"].(string)+v["_field"].(string)]; ok {
+					v["unit"] = pair.Sensor.Unit
+					for _, attr := range pair.Sensor.Attributes {
+						if attr.Key == "threshold" {
+							if f, err := strconv.ParseFloat(attr.Value, 64); err == nil {
+								thresholdValue = f
+							}
+						} else if attr.Key == "alertMsg" {
+							alertMsg = attr.Value
+						}
+					}
+					if v["_value"].(float64) > thresholdValue {
+						resultData = append(resultData, gin.H{
+							"type": "alert",
+							"msg":  alertMsg,
+						})
+					}
 				}
 			}
 			c.JSON(http.StatusOK, gin.H{"ok": true, "data": resultData})
